@@ -28,7 +28,7 @@ output:
         *This function is particularly handy for setting up parameter grids in simulation studies or optimization experiments where you want to explore the effect of different parameter values on the outcome of your simulations.*
 ```{r}
 library(tidyr)
-?expand_grid
+#?expand_grid
 
 
 #Exampel
@@ -37,10 +37,8 @@ flips <- c(10, 20, 30)
 prob_heads <- c(0.3, 0.5, 0.7)
 
 # Create a data frame with all combinations
-simulation_grid <- expand_grid(flips = flips, prob_heads = prob_heads)
+explain_simulation_grid <- expand_grid(flips = flips, prob_heads = prob_heads)
 
-# View the result
-print(simulation_grid)
 
 
 ```
@@ -61,24 +59,22 @@ print(simulation_grid)
 #Exampel
 
 library(purrr)
-?pmap
+#?pmap
 
 # Define a simulation function
 simulate_coin_flip <- function(flips, prob_heads) {
   # Your simulation logic here, e.g., using rbinom for coin flips
-  simulated_results <- rbinom(flips, 1, prob_heads)
+  explain_simulated_results <- rbinom(flips, 1, prob_heads)
   # Return some summary or result of the simulation
-  return(list(flips = flips, prob_heads = prob_heads, result = sum(simulated_results)))
+  return(list(flips = flips, prob_heads = prob_heads, result = sum(explain_simulated_results)))
 }
 
 # Create a data frame with parameter combinations
-parameter_grid <- expand_grid(flips = c(10, 20, 30), prob_heads = c(0.3, 0.5, 0.7))
+explain_parameter_grid <- expand_grid(flips = c(10, 20, 30), prob_heads = c(0.3, 0.5, 0.7))
 
 # Apply simulation function to each set of parameters in parallel
-simulation_results <- pmap(parameter_grid, simulate_coin_flip)
+explain_simulation_results <- pmap(explain_parameter_grid, simulate_coin_flip)
 
-# View the results
-print(simulation_results)
 
 
 ```
@@ -97,13 +93,18 @@ The code in the below chunk is a copy of the final working simulation from "1_ge
 
 *To do this, you should modify the simulation in the following ways.
 
-[X] Use the parameters listed in the below code chunk 'as-is': I've already modified it to contain the settings I want you to simulate for this question. 
-        [-] Once you have a working simulation, you can also simulate for other parameters if you want to understand the conditions that     determine when you find differences between the tests.
-[X] Remove the Cohen's d calculation as we don't need it here.
-[X] Compare the performance of the Student's independent t-test with a Welches' independent t-test. To do this, write a second data analysis function by copying and then modifying the existing one so that it saves the p value for a Welches' test instead.
-[X] Both data analysis functions should be applied to same dataset, i.e., one generated dataset that is analysed in two different way. The p values of the two different tests should be saved as separate columns.
-[-] To summarize the results of your new simulation, calculate the false positive rate (proportion of cases where p < .05) for each experimental condition.
-[-] Try to also create histogram(s) that plot the distribution of p values for each of the two tests.
+[x] Use the parameters listed in the below code chunk 'as-is': I've already modified it to contain the settings I want you to simulate for this question. 
+[ ] Once you have a working simulation, you can also simulate for other parameters if you want to understand the conditions that     determine when you find differences between the tests.
+
+[x] Remove the Cohen's d calculation as we don't need it here.
+
+[x] Compare the performance of the Student's independent t-test with a Welches' independent t-test. To do this, write a second data analysis function by copying and then modifying the existing one so that it saves the p value for a Welches' test instead.
+
+[x] Both data analysis functions should be applied to same dataset, i.e., one generated dataset that is analysed in two different way. The p values of the two different tests should be saved as separate columns.
+
+[x] To summarize the results of your new simulation, calculate the false positive rate (proportion of cases where p < .05) for each experimental condition.
+
+[x] Try to also create histogram(s) that plot the distribution of p values for each of the two tests.
 
 Remember that in both the previous simulation and this one you're studying the proportion of tests that produce a significant result. However, in the previous simulation the population effect size was non-zero, so the proportion of significant effects represents the tests statistical power (the true-positive rate). However, in this stimulation the population effect size is zero, so the proportion of significant effects represents the test's false-positive rate.
 
@@ -137,8 +138,8 @@ set.seed(42)
 ```
 
 
-## new/old Simulation
-### generate_data
+## new Simulation
+### generate data
 ```{r}
 
 # define data generating function ----
@@ -165,8 +166,15 @@ generate_data <- function(n_control,
 ```
 
 
-### - Compare the performance of the Student's independent t-test with a Welches' independent t-test. To do this, write a second data analysis function by copying and then modifying the existing one so that it saves the p value for a Welches' test instead.
+### two ata analysis functions
+- Compare the performance of the Student's independent t-test with a Welches' independent t-test. To do this, write a second data analysis function by copying and then modifying the existing one so that it saves the p value for a Welches' test instead.
+
+copied the original analysis
+Welches' independent t-test --> set var.equal FALSE --> _w
+T-Test --> _t
+
 ```{r}
+
 ## T Test ~ added a _t to differ between the t-test and the welch test
 # define data analysis function ----
 analyse_data_t <- function(data) {
@@ -182,9 +190,10 @@ analyse_data_t <- function(data) {
   return(res)
 }
 
-## copied the original analysis
-## Welches' independent t-test --> set var.equal FALSE
-## _w
+
+
+# Welches' independent t-test --> set var.equal FALSE
+
 # define data analysis function ----
 analyse_data_w <- function(data) {
   
@@ -202,7 +211,9 @@ analyse_data_w <- function(data) {
 ```
 
 
-### experiment_parameters_grid
+### experiment parameters grid
+
+100 --> 1000
 ```{r}
 # define experiment parameters ----
 # note: these are the correct ones I want you to simulate. 
@@ -213,13 +224,15 @@ experiment_parameters_grid <- expand_grid(
   mean_intervention = 0,
   sd_control = 0.66, # notice that the two sample variances (via SDs) are different
   sd_intervention = 1.33,
-  iteration = 1:100 # the final simulation needs lots of p values for a good plot
+  iteration = 1:1000 # the final simulation needs lots of p values for a good plot
 )
 
 ```
 
-### - Both data analysis functions should be applied to same dataset, i.e., one generated dataset that is analysed in two different way. The p values of the two different tests should be saved as separate columns.
+### Simulation with the p-value columns
+- Both data analysis functions should be applied to same dataset, i.e., one generated dataset that is analysed in two different way. The p values of the two different tests should be saved as separate columns.
 
+added another column for the p-values from the Welch Test
 ```{r}
 # run simulation ----
 simulation <- 
@@ -244,15 +257,16 @@ simulation <-
   
 ```
 
-### - To summarize the results of your new simulation, calculate the false positive rate (proportion of cases where p < .05) for each experimental condition.
+### Summarize Simulation
+- To summarize the results of your new simulation, calculate the false positive rate (proportion of cases where p < .05) for each experimental condition.
 
+unnested both analysis, than renamed the columns
+I think? I calculated the false positive rate?
 ```{r}
 # summarise simulation results over the iterations ----
 ## estimate power  
 ## ie what proportion of p values are significant (< .05)
 
-#unnested both analysis, than renamed the columns
-#I think? I calculated the false positive rate?
 
 simulation_summary <- simulation |>
   unnest(c(analysis_results_T, analysis_results_W), names_sep = "_") |>
@@ -268,8 +282,36 @@ simulation_summary <- simulation |>
 
 ```
 
-### [-] Try to also create histogram(s) that plot the distribution of p values for each of the two tests.
+### Histograms
+- Try to also create histogram(s) that plot the distribution of p values for each of the two tests.
 ```{r}
+
+#preparing the dataset for the plots
+simulation_plots <- simulation |>
+  unnest(c(analysis_results_T, analysis_results_W), names_sep = "_") |>
+  rename(p_T = analysis_results_T_p,
+         p_W = analysis_results_W_p)|>    
+  mutate(n_control = as.factor(n_control),
+         n_intervention = as.factor(n_intervention))|>
+  group_by(n_control, n_intervention)  
+
+
+
+# plot for the T Test
+ggplot(simulation_plots, aes(p_T)) +
+  geom_histogram(fill = "darkslategray2", color = "darkslategray4") +
+  ggtitle("distribution of p values for the T-Test") +
+  ylab("frequencies")+
+  ylim(0, 65) +
+  xlab("p value")
+
+# plot for the W Test
+ggplot(simulation_plots, aes(p_W)) +
+  geom_histogram(fill = "gold", color = "gold4") +
+  ggtitle("distribution of p values for the T-Test") +
+  ylab("frequencies")+
+   ylim(0, 65) +
+  xlab("p value")
 
 
 ```
