@@ -97,12 +97,12 @@ The code in the below chunk is a copy of the final working simulation from "1_ge
 
 *To do this, you should modify the simulation in the following ways.
 
-- Use the parameters listed in the below code chunk 'as-is': I've already modified it to contain the settings I want you to simulate for this question. Once you have a working simulation, you can also simulate for other parameters if you want to understand the conditions that determine when you find differences between the tests.
-- Remove the Cohen's d calculation as we don't need it here.
-- Compare the performance of the Student's independent t-test with a Welches' independent t-test. To do this, write a second data analysis function by copying and then modifying the existing one so that it saves the p value for a Welches' test instead.
-- Both data analysis functions should be applied to same dataset, i.e., one generated dataset that is analysed in two different way. The p values of the two different tests should be saved as separate columns.
-- To summarize the results of your new simulation, calculate the false positive rate (proportion of cases where p < .05) for each experimental condition.
-- Try to also create histogram(s) that plot the distribution of p values for each of the two tests.
+[-] Use the parameters listed in the below code chunk 'as-is': I've already modified it to contain the settings I want you to simulate for this question. Once you have a working simulation, you can also simulate for other parameters if you want to understand the conditions that determine when you find differences between the tests.
+[X] Remove the Cohen's d calculation as we don't need it here.
+[-] Compare the performance of the Student's independent t-test with a Welches' independent t-test. To do this, write a second data analysis function by copying and then modifying the existing one so that it saves the p value for a Welches' test instead.
+[-] Both data analysis functions should be applied to same dataset, i.e., one generated dataset that is analysed in two different way. The p values of the two different tests should be saved as separate columns.
+[-] To summarize the results of your new simulation, calculate the false positive rate (proportion of cases where p < .05) for each experimental condition.
+[-] Try to also create histogram(s) that plot the distribution of p values for each of the two tests.
 
 Remember that in both the previous simulation and this one you're studying the proportion of tests that produce a significant result. However, in the previous simulation the population effect size was non-zero, so the proportion of significant effects represents the tests statistical power (the true-positive rate). However, in this stimulation the population effect size is zero, so the proportion of significant effects represents the test's false-positive rate.
 
@@ -112,10 +112,11 @@ When modifying the code:
 - Make modifications, do bug checking, and even make git commits incrementally. Think about not only getting the final simulation working, but the process of how you got there through making changes, checking that those changes produce the expected outcomes, and then moving on to the next task.
 - If you're stuck, please post about it on Slack. I need feedback to determine whether this exercise is too easy or too hard for the group.
 
+## Dependencies
 ```{r}
 
 # # remove all objects from environment ----
-# rm(list = ls())
+rm(list = ls())
 
 
 # dependencies ----
@@ -132,7 +133,11 @@ library(effsize)
 # set the seed ----
 # for the pseudo random number generator to make results reproducible
 set.seed(42)
+```
 
+
+## new/old Simulation
+```{r}
 
 # define data generating function ----
 generate_data <- function(n_control,
@@ -167,14 +172,8 @@ analyse_data <- function(data) {
                        var.equal = TRUE,
                        alternative = "two.sided")
   
-  res_cohens_d <- effsize::cohen.d(formula = score ~ condition,  # new addition: also fit cohen's d
-                                   within = FALSE,
-                                   data = data)
   
-  res <- tibble(p = res_t_test$p.value, 
-                cohens_d = res_cohens_d$estimate,  # new addition: save cohen's d and its 95% CIs to the results tibble
-                cohens_d_ci_lower = res_cohens_d$conf.int["lower"],
-                cohens_d_ci_upper = res_cohens_d$conf.int["upper"])
+  res <- tibble(p = res_t_test$p.value)
   
   return(res)
 }
@@ -189,7 +188,7 @@ experiment_parameters_grid <- expand_grid(
   mean_intervention = 0,
   sd_control = 0.66, # notice that the two sample variances (via SDs) are different
   sd_intervention = 1.33,
-  iteration = 1:5000 # the final simulation needs lots of p values for a good plot
+  iteration = 1:100 # the final simulation needs lots of p values for a good plot
 )
 
 
@@ -218,13 +217,10 @@ simulation <-
 simulation_summary <- simulation |>
   unnest(analysis_results) |>
   mutate(n_control = as.factor(n_control),
-         n_intervention = as.factor(n_intervention),
-         true_effect = paste("Cohen's d =", mean_intervention)) |>
+         n_intervention = as.factor(n_intervention)) |>
   group_by(n_control,
-           n_intervention,
-           true_effect) |>
-  summarize(power = mean(p < .05), 
-            mean_cohens_d_precision = mean((cohens_d_ci_upper - cohens_d_ci_lower)/2),
+           n_intervention) |>
+  summarize(power = mean(p < .05),
             .groups = "drop")
 
 ```
