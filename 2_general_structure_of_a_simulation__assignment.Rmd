@@ -97,7 +97,8 @@ The code in the below chunk is a copy of the final working simulation from "1_ge
 
 *To do this, you should modify the simulation in the following ways.
 
-[-] Use the parameters listed in the below code chunk 'as-is': I've already modified it to contain the settings I want you to simulate for this question. Once you have a working simulation, you can also simulate for other parameters if you want to understand the conditions that determine when you find differences between the tests.
+[X] Use the parameters listed in the below code chunk 'as-is': I've already modified it to contain the settings I want you to simulate for this question. 
+        [-] Once you have a working simulation, you can also simulate for other parameters if you want to understand the conditions that     determine when you find differences between the tests.
 [X] Remove the Cohen's d calculation as we don't need it here.
 [X] Compare the performance of the Student's independent t-test with a Welches' independent t-test. To do this, write a second data analysis function by copying and then modifying the existing one so that it saves the p value for a Welches' test instead.
 [X] Both data analysis functions should be applied to same dataset, i.e., one generated dataset that is analysed in two different way. The p values of the two different tests should be saved as separate columns.
@@ -137,6 +138,7 @@ set.seed(42)
 
 
 ## new/old Simulation
+### generate_data
 ```{r}
 
 # define data generating function ----
@@ -160,8 +162,11 @@ generate_data <- function(n_control,
   
   return(data)
 }
+```
 
 
+### - Compare the performance of the Student's independent t-test with a Welches' independent t-test. To do this, write a second data analysis function by copying and then modifying the existing one so that it saves the p value for a Welches' test instead.
+```{r}
 ## T Test ~ added a _t to differ between the t-test and the welch test
 # define data analysis function ----
 analyse_data_t <- function(data) {
@@ -194,7 +199,11 @@ analyse_data_w <- function(data) {
   return(res)
 }
 
+```
 
+
+### experiment_parameters_grid
+```{r}
 # define experiment parameters ----
 # note: these are the correct ones I want you to simulate. 
 experiment_parameters_grid <- expand_grid(
@@ -207,7 +216,11 @@ experiment_parameters_grid <- expand_grid(
   iteration = 1:100 # the final simulation needs lots of p values for a good plot
 )
 
+```
 
+### - Both data analysis functions should be applied to same dataset, i.e., one generated dataset that is analysed in two different way. The p values of the two different tests should be saved as separate columns.
+
+```{r}
 # run simulation ----
 simulation <- 
   # using the experiment parameters
@@ -223,24 +236,41 @@ simulation <-
                                generate_data)) |>
   
   # apply the analysis function to the generated data using the parameters relevant to analysis
-  ## 
+  ## added another column for the p-values from the Welch Test
   mutate(analysis_results_T = pmap(list(generated_data),
                                  analyse_data_t),
          analysis_results_W = pmap(list(generated_data),
                                  analyse_data_w))
   
+```
 
+### - To summarize the results of your new simulation, calculate the false positive rate (proportion of cases where p < .05) for each experimental condition.
+
+```{r}
 # summarise simulation results over the iterations ----
 ## estimate power  
 ## ie what proportion of p values are significant (< .05)
+
+#unnested both analysis, than renamed the columns
+#I think? I calculated the false positive rate?
+
 simulation_summary <- simulation |>
-  unnest(analysis_results_T) |>
+  unnest(c(analysis_results_T, analysis_results_W), names_sep = "_") |>
+  rename(p_T = analysis_results_T_p,
+         p_W = analysis_results_W_p)|>    
   mutate(n_control = as.factor(n_control),
-         n_intervention = as.factor(n_intervention)) |>
-  group_by(n_control,
-           n_intervention) |>
-  summarize(power = mean(p < .05),
+         n_intervention = as.factor(n_intervention))|>
+  group_by(n_control, n_intervention)  |>
+  summarize(false_pos_T = mean(p_T < 0.05),
+            false_pos_W = mean(p_W < 0.05),
             .groups = "drop")
+
+
+```
+
+### [-] Try to also create histogram(s) that plot the distribution of p values for each of the two tests.
+```{r}
+
 
 ```
 
