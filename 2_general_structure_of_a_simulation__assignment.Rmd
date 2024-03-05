@@ -36,6 +36,7 @@ library(tidyr)
 flips <- c(10, 20, 30)
 prob_heads <- c(0.3, 0.5, 0.7)
 
+
 # Create a data frame with all combinations
 explain_simulation_grid <- expand_grid(flips = flips, prob_heads = prob_heads)
 
