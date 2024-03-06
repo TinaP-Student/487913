@@ -167,7 +167,7 @@ generate_data <- function(n_control,
 ```
 
 
-### two ata analysis functions
+### two data analysis functions
 - Compare the performance of the Student's independent t-test with a Welches' independent t-test. To do this, write a second data analysis function by copying and then modifying the existing one so that it saves the p value for a Welches' test instead.
 
 copied the original analysis
@@ -177,7 +177,7 @@ T-Test --> _t
 ```{r}
 
 ## T Test ~ added a _t to differ between the t-test and the welch test
-# define data analysis function ----
+# define data analysis function
 analyse_data_t <- function(data) {
   
   res_t_test <- t.test(formula = score ~ condition, 
@@ -209,6 +209,25 @@ analyse_data_w <- function(data) {
   return(res)
 }
 
+
+#or diffrent version - veranschaulichung, wie man eine Funktion noch erweitern könnte
+
+analyse_data_new_try <- function(data, hypothesis) {
+  
+  res_t_test <- t.test(formula = score ~ condition, 
+                       data = data,
+                       var.equal = FALSE, # WELCH TEST
+                       alternative = hypothesis)
+  
+  
+  res <- tibble(p = res_t_test$p.value)
+  
+  return(res)
+}
+
+analyse_data_new_try(data = generated_data, hypothesis = "two-sided")
+
+
 ```
 
 
@@ -225,7 +244,7 @@ experiment_parameters_grid <- expand_grid(
   mean_intervention = 0,
   sd_control = 0.66, # notice that the two sample variances (via SDs) are different
   sd_intervention = 1.33,
-  iteration = 1:1000 # the final simulation needs lots of p values for a good plot
+  iteration = 1:5000 # the final simulation needs lots of p values for a good plot
 )
 
 ```
@@ -255,6 +274,11 @@ simulation <-
                                  analyse_data_t),
          analysis_results_W = pmap(list(generated_data),
                                  analyse_data_w))
+
+#mutatet --> variable ist darein "eingenestet" 
+#zuerst 2D Dataframe - es nested, weil wir die p-Variable und "generated data" als neue Dataframe in diese Zelle reingeputtet haben, deshalb müssen wir es unnesten (generated_data besonders gut veranschaulicht)
+
+#wenn wir alles in seperate for loops machen würden, könnten wir es gar nicht kontrollieren ~ mit purr, expand_grid und alles können wir es anshcauen und besser nachvollziehen
   
 ```
 
@@ -269,11 +293,13 @@ I think? I calculated the false positive rate?
 ## ie what proportion of p values are significant (< .05)
 
 
+#anderes Vorgehen als in Solution
+
 simulation_summary <- simulation |>
   unnest(c(analysis_results_T, analysis_results_W), names_sep = "_") |>
   rename(p_T = analysis_results_T_p,
          p_W = analysis_results_W_p)|>    
-  mutate(n_control = as.factor(n_control),
+  mutate(n_control = as.factor(n_control),#wir tun das, damit es als Faktoren betrachtet und nicht direkt als "nummern" ~ es sind jetzt für uns keine Zahlen, sondern "Gruppen" 
          n_intervention = as.factor(n_intervention))|>
   group_by(n_control, n_intervention)  |>
   summarize(false_pos_T = mean(p_T < 0.05),
@@ -303,7 +329,7 @@ ggplot(simulation_plots, aes(p_T)) +
   geom_histogram(fill = "darkslategray2", color = "darkslategray4") +
   ggtitle("distribution of p values for the T-Test") +
   ylab("frequencies")+
-  ylim(0, 65) +
+  ylim(0, 400) +
   xlab("p value")
 
 # plot for the W Test
@@ -311,8 +337,33 @@ ggplot(simulation_plots, aes(p_W)) +
   geom_histogram(fill = "gold", color = "gold4") +
   ggtitle("distribution of p values for the T-Test") +
   ylab("frequencies")+
-   ylim(0, 65) +
+   ylim(0, 400) +
   xlab("p value")
+
+
+
+##Sein Vorgehen
+simulation_reshaped <- simulation |>
+  unnest(c(analysis_results_T, analysis_results_W), names_sep = "_") |>
+  rename(p_T = analysis_results_T_p,
+         p_W = analysis_results_W_p)|>    
+  pivot_longer(cols = c("p_T", "p_W"),
+               names_to = "test",
+               values_to = "p") 
+#mit pivot longer, hat er die Columns anders arrangiert, damit man es besser in Plots darstellen kann
+
+# plot
+ggplot(simulation_reshaped, aes(p)) + 
+  geom_histogram(boundary = 0, binwidth = 0.05) +
+  geom_vline(xintercept = 0.05, color = "orange") +
+  facet_wrap(~ test)
+
+# plot zoomed in on p values between 0 and 0.10
+ggplot(simulation_reshaped, aes(p)) + 
+  geom_histogram(boundary = 0, binwidth = 0.01) +
+  geom_vline(xintercept = 0.05, color = "orange") +
+  facet_wrap(~ test) +
+  coord_cartesian(xlim = c(0, 0.1))
 
 
 ```
