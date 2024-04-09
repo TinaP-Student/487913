@@ -16,14 +16,20 @@ output:
 
 Distributions:
 
-- The normal distribution is defined as two parameters, what are they?
-- The skew-normal distribution is defined as three parameters, what are they? 
+- The normal distribution is defined as two parameters, what are they
+       mean & sd
+- The skew-normal distribution is defined as three parameters, what are they?
+   location ~ mean & scale ~ sd + skew
 - Which parameters of the normal distribution broadly correspond with which parameters of the skew-normal distribution? 
+  ?
 - When is a skew-normal distribution identical to a normal distribution? 
+  skewn = zero
 
 (Violating the) assumptions of statistical inference tests:
 
 - We all know that violating assumptions is bad. Bad for what? What property or properties of the test is the one we are usually concerned with being undermined when assumptions are violated?
+
+
 
 # Apply your learning
 
@@ -50,6 +56,12 @@ library(dplyr)
 library(purrr) 
 library(ggplot2)
 library(sn)
+library(knitr)
+library(janitor)
+library(kableExtra)
+library(effsize)
+
+library(compute.es)
 
 # simple plot of a normal distribution
 set.seed(42)
@@ -92,15 +104,19 @@ generate_data <- function(n_control,
 
 # define data analysis function ----
 analyse_data <- function(data) {
+  res_t_cohen <- cohen.d(formula = score ~ condition, 
+                       data = data)
   res_t_test <- t.test(formula = score ~ condition, 
                        data = data,
-                       var.equal = TRUE,
+                       var.equal = FALSE,
                        alternative = "two.sided")
+
+  # Ergebnis als Tibble erstellen
+  res <- tibble(cohens_d = res_t_cohen$estimate,
+                p = res_t_test$p.value)
+
   
   # \TODO this function will need to be changed to extract cohen's d instead. While there is code for this in a previous lesson, see if you can rewrite it yourself.
-  res <- tibble(p = res_t_test$p.value,
-                mean_control = res_t_test$estimate[1],  
-                mean_intervention = res_t_test$estimate[2])
   
   return(res)
 }
@@ -113,6 +129,15 @@ set.seed(42)
 experiment_parameters_grid_c <- expand_grid(
   
   # \TODO - see if you can construct this without copy-pasting it from the lesson file
+  n_control = 100,
+  n_intervention = 100,
+  location_control = 0,
+  location_intervention = 0, 
+  scale_control = 1,
+  scale_intervention = 1,
+  skew_control = c(-12, 12),
+  skew_intervention  =c(-12, 12),
+  iterations = 1:1000
   
 )
 
@@ -140,11 +165,13 @@ simulation_c <-
 # summarise simulation results over the iterations ----
 simulation_c_summary <- simulation_c |>
   unnest(analysis_results) |>
+  group_by(skew_control,skew_intervention)|>
   
   # # \TODO - the summary across conditions must be group_by()'d the conditions that were manipulated, ie where there is more than one value for the parameter in expand_grid()
   # group_by() |> 
   
-  summarize(
+  summarize(false_positive_rate = round_half_up(mean(p < .05), digits = 3),
+            c_d = round_half_up(mean(cohens_d < .05), digits = 3)
     
     # \TODO - this code to summarize the outcomes will need to be adapted 
     
@@ -154,6 +181,7 @@ simulation_c_summary <- simulation_c |>
 simulation_c_summary |>
   kable() |>
   kable_classic(full_width = FALSE)
+
 
 ``` 
 
