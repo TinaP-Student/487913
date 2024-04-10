@@ -89,39 +89,55 @@ set.seed(123)
 
 
 
-generate_cor_data <- function(n_,
-                          r_) {
+generate_data <- function(n, r) {
+  data <- rnorm_multi(
+    n = n,
+    mu = c(A = 0, B = 0),
+    sd = 1,
+    r = c(1.0, r,
+          r, 1.0)
+  )
   
-  data <-rnorm_multi(
-   n = n_,
-   mu = mean_,
-   sd = sd_,
-   r = r_,
-   empirical = TRUE
- )
-    
   return(data)
 }
 
+# to check if it does what it should do
+# generate_cor_data(100, 0.3)|>
+#   cor()
+
+# es funktioniert auch nur so:
+#   r = r #also ohne Matrix!
+
 
 # define data analysis function ----
-analyse_cor_data <- function(data) {
+analyse_data <- function(data) {
   
+  #noch nicht runden!! 
+  #problem = es war kein dataframe!
+  result1 <- cor(data)
   
-  result <- cor(data)|>
-    round(2)
+  #für die p-values?
+  result2 <- cor.test(x = data$A, y = data$B) 
+  
+  result <- data.frame(p = result2$p.value,
+                       r_observed = result2$estimate)
+  
   
   return(result)
 }
 
 
 # define experiment parameters ----
+# experiment_parameters_grid <- expand_grid(
+#   n = seq(seq(25, 400, 25)),
+#   r_ = c(0, 0.3),
+#   iteration = 1:10000)
+
 experiment_parameters_grid <- expand_grid(
-  n_ = seq(seq(25, 400, 25)),
-  mean_ = c(0,0),
-  sd_ = c(1,1),
-  r_ = c(0, 0.3),
-  iteration = 1:10000)
+  n = 100,
+  r = 0.3,
+  iteration = 1:10)
+
 
 
 # run simulation ----
@@ -130,8 +146,8 @@ simulation <-
   experiment_parameters_grid |>
   
   # generate data using the data generating function and the parameters relevant to data generation
-  mutate(generated_cor_data = pmap(list(n_, mean_, sd_, r_),
-                               generate_cor_data)) #|>
+  mutate(generated_data = pmap(list(n, r),
+                               generate_data)) |>
   
   # apply the analysis function to the generated data using the parameters relevant to analysis
   mutate(analysis_results = pmap(list(generated_data),
@@ -141,12 +157,17 @@ simulation <-
 # summarise simulation results over the iterations ----
 simulation_reshaped <- simulation |>
   # convert `analysis_results` nested-data-frame column to regular columns in the df. in this case, the p value.
-  unnest(analysis_results) |>
-  # label the true effect value
-  mutate(true_effect = paste("Cohen's d =", mean_intervention))
+  unnest(analysis_results) 
 
 
 # table/plot to be written here
+
+simulation_reshaped|>
+  group_by(n, r)|>
+  summarise(mean_r_observed= mean(r_observed))
+
+
+
 
 ```
 
