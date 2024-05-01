@@ -11,6 +11,22 @@ output:
     toc_float: yes
 ---
 
+```{r}
+
+# dependencies
+library(tidyr)
+library(dplyr)
+library(forcats)
+library(readr)
+library(purrr) 
+library(ggplot2)
+library(sn)
+library(knitr)
+library(kableExtra)
+library(car)
+
+```
+
 # Overview
 
 What do most statistics textbooks tell you to do when trying to test if two groups' means differ?
@@ -94,20 +110,6 @@ Note that the Barlett test can be implemented using `car::leveneTest(centre = "m
 rm(list = ls())
 
 
-# dependencies ----
-# repeated here for the sake of completeness 
-
-library(tidyr)
-library(dplyr)
-library(forcats)
-library(readr)
-library(purrr) 
-library(ggplot2)
-library(sn)
-library(knitr)
-library(kableExtra)
-library(car)
-
 # set the seed ----
 # for the pseudo random number generator to make results reproducible
 set.seed(42)
@@ -141,34 +143,22 @@ generate_data <- function(n,
 }
 
 
-
-
 # define data analysis function ----
-
-# The first simulation should merely tests the statistical power of Barlett's test for differences in SDs, which is used to test the assumption of homogeneity of variances. The data analysis function should extract a p value from the `leveneTest()` function. Code has already been provided to summarize the results: use this existing code to determine what variable names you should use (e.g., `assumption_test_homogeneity_p`).
-
-
-# test_data <- generate_data(100, 0, 1, 1, 0)
-# test_levene<-leveneTest(score ~ condition,data = test_data, center = median)
-
-#zu extrahieren und dann speziell als tibble zu dingseln, damit es halt ein dataframe wird
-# test_levene$`Pr(>F)`[1]
-
 analyse_data <- function(data) {
   
   require(car)
   
- # Perform Levene's Test for Homogeneity of variances
-  levene_test_result <- leveneTest(score ~ as.factor(condition), data = data, center = median)
+  assumption_test_homogeneity <- 
+    leveneTest(score ~ as.factor(condition), 
+               center = median,
+               data = data)
   
-  # Extract the p-value from the test results
-  assumption_test_homogeneity_p <- levene_test_result$"Pr(>F)"[1]
-  results <- tibble(assumption_test_homogeneity_p = assumption_test_homogeneity_p)
-  #assumption_test_homogeneity_p = assumption_test_homogeneity[1, "Pr(>F)"] <- so würde es auch gehen
+  results <- tibble(
+    assumption_test_homogeneity_p = assumption_test_homogeneity[1, "Pr(>F)"]
+  ) 
   
   return(results)
 }
-
 
 
 # define experiment parameters ----
@@ -232,20 +222,6 @@ This simulation therefore attempts to mimic the rules that many statistics textb
 rm(list = ls())
 
 
-# dependencies ----
-# repeated here for the sake of completeness 
-
-library(tidyr)
-library(dplyr)
-library(forcats)
-library(readr)
-library(purrr) 
-library(ggplot2)
-library(sn)
-library(knitr)
-library(kableExtra)
-library(car)
-
 # set the seed ----
 # for the pseudo random number generator to make results reproducible
 set.seed(42)
@@ -281,55 +257,39 @@ generate_data <- function(n,
 
 
 # define data analysis function ----
-# 2 - The second simulation should calculate the p value from the Bartlett test, and also *both* a **Student's** *t*-test and a Mann-Whitney U test (aka Wilcoxon Rank-Sum test).
-# Which hypothesis tests's p value is used to make the statistical inference in each iteration should be determined by whether the assumption test detects a violation or not. 
-
-# test_data <- generate_data(100, 0, 0, 1, 1,0)
-
-
-#Ian hatte ein anderes Vorgehen, er wollte dass es default mässig beide Tests macht
-# und dann mit "hypothesis_test_p_conditional" macht man ifelse
-
 analyse_data <- function(data) {
   
   require(car)
+  #für Normalevrteilung
+  assumption_test_normality_intervention   <- shapiro.test(data$score[data$condition == "intervention"])
+  assumption_test_normality_control        <- shapiro.test(data$score[data$condition == "control"])
   
-  bartlett_result<- bartlett.test(score ~ condition, data = data)
-  assumption_test_homogeneity_p <- bartlett_result$p.value
- 
-
-  # Initialize placeholders for potential results
-  hypothesis_test_p_students_t <- NA
-  hypothesis_test_p_mann_whitney_u <- NA
-  hypothesis_test_p_conditional <- NA
-  test_used <- NA
+  assumption_test_homogeneity <- 
+    leveneTest(score ~ as.factor(condition), 
+               center = median,
+               data = data)
   
-
-  # If Bartlett's test p-value is greater than 0.05, it suggests that variances are equal, and hence, a Student's t-test (assuming equal variances) is appropriate.
-  # assumption_test_homogeneity_p = 0.003
+  hypothesis_test_students_t     <- t.test(formula = score ~ condition, 
+                                           data = data,
+                                           var.equal = TRUE,
+                                           alternative = "two.sided")
   
-  if (assumption_test_homogeneity_p > 0.05) {
-    #student's test
-    ttest_result <- t.test(score ~ condition, data = data, var.equal = TRUE)
-    hypothesis_test_p_students_t <- ttest_result$p.value
-    hypothesis_test_p_conditional <- ttest_result$p.value
-    test_used <- "Student's t-test"
-   
-    
-  } else{
-    #Wilcoxon Rank-Sum test
-    wilcox_result <- wilcox.test(score ~ condition, data = data)
-    hypothesis_test_p_mann_whitney_u <- wilcox_result$p.value
-    hypothesis_test_p_conditional <- wilcox_result$p.value
-    test_used <- "Mann-Whitney U test"
-    
-  }
+  hypothesis_test_mann_whitney_u <- wilcox.test(formula = score ~ condition, 
+                                                data = data,
+                                                alternative = "two.sided")
   
-  results <- tibble(assumption_test_homogeneity_p = assumption_test_homogeneity_p,
-      hypothesis_test_p_mann_whitney_u = hypothesis_test_p_mann_whitney_u,
-      hypothesis_test_p_students_t = hypothesis_test_p_students_t,
-      hypothesis_test_p_conditional = hypothesis_test_p_conditional,
-      test_used = test_used)
+  results <- tibble(
+    assumption_test_normality_p_intervention = assumption_test_normality_intervention$p.value, 
+    assumption_test_normality_p_control = assumption_test_normality_control$p.value,
+    assumption_test_homogeneity_p = assumption_test_homogeneity[1, "Pr(>F)"],
+    hypothesis_test_p_students_t = hypothesis_test_students_t$p.value, 
+    hypothesis_test_p_mann_whitney_u = hypothesis_test_mann_whitney_u$p.value
+  ) |>
+    mutate(hypothesis_test_p_conditional = ifelse(assumption_test_normality_p_intervention < .05 |
+                                                    assumption_test_normality_p_control < .05 |
+                                                    assumption_test_homogeneity_p, 
+                                                  hypothesis_test_p_mann_whitney_u,
+                                                  hypothesis_test_p_students_t))
   
   return(results)
 }
@@ -343,7 +303,7 @@ experiment_parameters_grid <- expand_grid(
   scale_intervention = c(1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0), # scale, akin to SD
   scale_control = 1, # location, akin to mean
   skew = c(0, 1, 2, 3, 6, 9, 12), # slant/skew. When 0, produces normal/gaussian data
-  iteration = 1:100
+  iteration = 1:1000
 )
 
 
